@@ -5,17 +5,15 @@ export type DeviceStatus = 'connected' | 'disconnected' | 'syncing' | 'error';
 export interface KneeLoadMetric {
   id: string;
   timestamp: string;
-  axialForceN: number;        // Axial force in Newtons
-  flexionAngleDeg: number;    // Knee flexion in degrees (0 - 140)
-  medialCompartmentN: number; // Force on medial compartment
-  lateralCompartmentN: number;// Force on lateral compartment
+  kam: number; // Knee Adduction Moment (%BW·BH)
+  kfm: number; // Knee Flexion Moment (%BW·BH)
   status: LoadStatus;
 }
 
 export interface WearableDevice {
   deviceId: string;
   name: string;
-  batteryLevel: number;       // Percentage (0 - 100)
+  batteryLevel: number;
   firmwareVersion: string;
   status: DeviceStatus;
   lastSync: string;
@@ -27,8 +25,10 @@ export interface MonitoringSession {
   endTime?: string;
   durationMinutes: number;
   stepCount: number;
-  peakLoadN: number;
-  averageLoadN: number;
+  peakKAM: number;
+  averageKAM: number;
+  peakKFM: number;
+  averageKFM: number;
   status: 'active' | 'completed' | 'paused';
 }
 
@@ -36,7 +36,7 @@ export interface MonitoringSession {
 export interface SensorConnectivityItem {
   id: string;
   name: string;
-  role: 'Thigh IMU' | 'Shank IMU' | 'ESP32 Controller';
+  role: 'Sensor 1' | 'Sensor 2' | 'ESP32 Controller';
   status: 'connected' | 'syncing' | 'disconnected';
   simulatedState: string;
   lastUpdate: string;
@@ -44,12 +44,11 @@ export interface SensorConnectivityItem {
   signalStrength?: string;
 }
 
-/** Trend data point for knee load graph */
+/** Trend data point for knee moment graph */
 export interface LoadTrendPoint {
   time: string;
-  estimatedLoad: number;
-  uncertaintyUpper: number;
-  uncertaintyLower: number;
+  estimatedKAM: number;
+  estimatedKFM: number;
 }
 
 /** Table item for recent monitoring sessions */
@@ -58,7 +57,11 @@ export interface SessionSummaryRow {
   date: string;
   duration: string;
   gaitCycles: number;
-  averageEstimatedLoad: string;
+  averageKAM: string;
+  averageKFM: string;
+  averageEstimatedLoad?: string;
+  peakKAM?: string;
+  peakKFM?: string;
   peakEstimatedLoad?: string;
   status: 'Completed' | 'Active' | 'Archived';
   notes?: string;
@@ -94,15 +97,18 @@ export interface SystemActivityLog {
 }
 
 /** Person selector options for biomechanics model evaluation */
-export type PersonOption = 'Sample person A' | 'Sample person B' | 'Sample person C';
+export type PersonOption =
+  | 'Sample person A'
+  | 'Sample person B'
+  | 'Sample person C';
 
 /** Sensor configuration selector options */
-export type SensorConfigOption = 
-  | '8 IMUs (baseline)' 
-  | '3 IMUs (coming next)' 
-  | '2 IMUs: thigh + shank (coming next)';
+export type SensorConfigOption =
+  | '8 IMUs (baseline)'
+  | '3 IMUs (coming next)'
+  | '2 IMUs: best pair (after the placement study)';
 
-/** Data point for KAM & KFM moment curves across Stance Phase */
+/** Data point for KAM & KFM moment curves across stance phase */
 export interface KneeMomentDataPoint {
   stancePercent: number;
   labKAM: number;

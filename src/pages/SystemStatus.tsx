@@ -1,21 +1,21 @@
 import React from 'react';
-import { 
-  ShieldAlert, 
-  Radio, 
-  Cpu, 
-  Wifi, 
-  BatteryMedium, 
-  CheckCircle2, 
-  Code2, 
-  Activity, 
-  Layers 
+import {
+  ShieldAlert,
+  Radio,
+  Cpu,
+  Wifi,
+  BatteryMedium,
+  CheckCircle2,
+  Code2,
+  Activity,
+  Layers
 } from 'lucide-react';
 import { MetricCard } from '../components/MetricCard';
-import { 
-  mockSensors, 
-  mockDataTransmission, 
-  mockSoftwareComponents, 
-  mockActivityLogs 
+import {
+  mockSensors,
+  mockDataTransmission,
+  mockSoftwareComponents,
+  mockActivityLogs
 } from '../data';
 
 export const SystemStatus: React.FC = () => {
@@ -121,6 +121,15 @@ export const SystemStatus: React.FC = () => {
             );
           })}
         </div>
+
+        <div className="mt-4 p-4 rounded-lg bg-[#F7F8FA] border border-[#E5E7EB]">
+          <p className="text-xs font-semibold text-[#172B4D]">
+            IMU Sensor Configuration
+          </p>
+          <p className="text-xs text-[#718096] mt-1">
+            2 IMU sensors, placement to be decided after the sensor placement study.
+          </p>
+        </div>
       </section>
 
       {/* ============================================================
@@ -202,11 +211,10 @@ export const SystemStatus: React.FC = () => {
             const isActual = component.type === 'actual';
 
             return (
-              <div 
+              <div
                 key={component.name}
-                className={`p-4 rounded-lg border ${
-                  isActual ? 'bg-[#F7F8FA] border-[#E5E7EB]' : 'bg-white border-[#E5E7EB]'
-                } space-y-2`}
+                className={`p-4 rounded-lg border ${isActual ? 'bg-[#F7F8FA] border-[#E5E7EB]' : 'bg-white border-[#E5E7EB]'
+                  } space-y-2`}
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
@@ -218,11 +226,10 @@ export const SystemStatus: React.FC = () => {
                     <h4 className="text-sm font-bold text-[#172B4D]">{component.name}</h4>
                   </div>
                   <span
-                    className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold ${
-                      isActual
-                        ? 'bg-[#ECFDF5] text-[#16A36A] border border-[#A7F3D0]'
-                        : 'bg-[#FFF1E8] text-[#E87532] border border-[#FFE4D4]'
-                    }`}
+                    className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold ${isActual
+                      ? 'bg-[#ECFDF5] text-[#16A36A] border border-[#A7F3D0]'
+                      : 'bg-[#FFF1E8] text-[#E87532] border border-[#FFE4D4]'
+                      }`}
                   >
                     {component.status}
                   </span>
@@ -294,13 +301,12 @@ export const SystemStatus: React.FC = () => {
                   </td>
                   <td className="px-6 py-3.5 text-xs text-right">
                     <span
-                      className={`inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold ${
-                        log.status === 'Success'
-                          ? 'bg-[#ECFDF5] text-[#16A36A] border border-[#A7F3D0]'
-                          : log.status === 'Warning'
+                      className={`inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold ${log.status === 'Success'
+                        ? 'bg-[#ECFDF5] text-[#16A36A] border border-[#A7F3D0]'
+                        : log.status === 'Warning'
                           ? 'bg-[#FEF2F2] text-[#B91C1C] border border-[#FECACA]'
                           : 'bg-[#F0F4F8] text-[#172B4D] border border-[#D9E2EC]'
-                      }`}
+                        }`}
                     >
                       {log.status}
                     </span>

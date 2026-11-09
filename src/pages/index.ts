@@ -11,3 +11,5 @@ export { LiveMonitoring as LiveMonitoringPage } from './LiveMonitoring';
 export { GaitAnalysis as GaitAnalysisPage } from './GaitAnalysis';
 export { ResultsReports as ReportsPage } from './ResultsReports';
 export { SystemStatus as SystemStatusPage } from './SystemStatus';
+
+export * from './SensorPairRanking';

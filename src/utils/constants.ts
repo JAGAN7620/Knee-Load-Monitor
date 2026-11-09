@@ -14,4 +14,5 @@ export const ROUTES = {
   GAIT_ANALYSIS: '/gait-analysis',
   REPORTS: '/reports',
   SYSTEM_STATUS: '/system-status',
+  SENSOR_PAIR_RANKING: '/sensor-pair-ranking',
 };

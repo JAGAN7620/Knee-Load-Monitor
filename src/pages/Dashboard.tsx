@@ -1,21 +1,21 @@
 import React from 'react';
-import { 
-  Activity, 
-  Gauge, 
-  Clock, 
-  Footprints, 
-  Radio, 
+import {
+  Activity,
+  Gauge,
+  Clock,
+  Footprints,
+  Radio,
   AlertCircle,
   FileSpreadsheet
 } from 'lucide-react';
 import { MetricCard } from '../components/MetricCard';
 import { SensorStatusCard } from '../components/SensorStatus';
 import { LoadTrendChart } from '../components/LoadTrendChart';
-import { 
-  mockDashboardMetrics, 
-  mockSensors, 
-  mockLoadTrend, 
-  mockRecentSessions 
+import {
+  mockDashboardMetrics,
+  mockSensors,
+  mockLoadTrend,
+  mockRecentSessions
 } from '../data';
 
 export const Dashboard: React.FC = () => {
@@ -41,7 +41,7 @@ export const Dashboard: React.FC = () => {
 
           <div className="hidden sm:flex items-center gap-2 text-xs text-[#718096] bg-[#F7F8FA] border border-[#E5E7EB] px-3.5 py-2 rounded-md self-start md:self-auto">
             <Radio className="w-4 h-4 text-[#E87532] shrink-0" />
-            <span>Virtual Telemetry Engine Active (50 Hz)</span>
+            <span>Virtual Telemetry Engine Active (100 Hz)</span>
           </div>
         </div>
       </section>
@@ -49,31 +49,34 @@ export const Dashboard: React.FC = () => {
       {/* ============================================================
           B. Key Metrics (4 cards in one row on desktop)
           ============================================================ */}
+
       <section aria-labelledby="key-metrics-heading">
         <h3 id="key-metrics-heading" className="sr-only">
           Key Biomechanics Metrics
         </h3>
+
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
-          {/* 1. Estimated Knee Load */}
+
+          {/* 1. Knee Adduction Moment */}
           <MetricCard
-            title="Estimated Knee Load"
-            value={mockDashboardMetrics.estimatedKneeLoad}
-            unit={mockDashboardMetrics.loadUnit}
-            label={mockDashboardMetrics.loadLabel}
+            title="Knee Adduction Moment (KAM)"
+            value={mockDashboardMetrics.estimatedKAM}
+            unit={mockDashboardMetrics.kamUnit}
+            label={mockDashboardMetrics.kamLabel}
             icon={Activity}
-            badge="Live Estimate"
+            badge="Sample Value"
             iconBgColor="bg-[#FFF1E8]"
             iconTextColor="text-[#E87532]"
           />
 
-          {/* 2. Model Uncertainty */}
+          {/* 2. Knee Flexion Moment */}
           <MetricCard
-            title="Model Uncertainty"
-            value={`±${mockDashboardMetrics.modelUncertainty}`}
-            unit={mockDashboardMetrics.uncertaintyUnit}
-            label={mockDashboardMetrics.uncertaintyLabel}
+            title="Knee Flexion Moment (KFM)"
+            value={mockDashboardMetrics.estimatedKFM}
+            unit={mockDashboardMetrics.kfmUnit}
+            label={mockDashboardMetrics.kfmLabel}
             icon={Gauge}
-            badge="95% CI"
+            badge="Sample Value"
             iconBgColor="bg-[#F0F4F8]"
             iconTextColor="text-[#172B4D]"
           />
@@ -84,7 +87,7 @@ export const Dashboard: React.FC = () => {
             value={mockDashboardMetrics.monitoringDuration}
             label={mockDashboardMetrics.durationLabel}
             icon={Clock}
-            badge="In Progress"
+            badge="Simulated"
             iconBgColor="bg-[#FFF1E8]"
             iconTextColor="text-[#E87532]"
           />
@@ -96,10 +99,11 @@ export const Dashboard: React.FC = () => {
             unit={mockDashboardMetrics.cyclesUnit}
             label={mockDashboardMetrics.cyclesLabel}
             icon={Footprints}
-            badge="Symmetric"
+            badge="Simulated"
             iconBgColor="bg-[#F0F4F8]"
             iconTextColor="text-[#172B4D]"
           />
+
         </div>
       </section>
 
@@ -128,13 +132,19 @@ export const Dashboard: React.FC = () => {
             <SensorStatusCard key={sensor.id} sensor={sensor} />
           ))}
         </div>
+
+        <p className="text-xs text-[#718096]">
+          Sensor placement: To be decided after the placement study.
+        </p>
       </section>
 
-      {/* ============================================================
-          D. Knee Load Trend Chart
-          ============================================================ */}
-      <section aria-labelledby="knee-load-trend-heading">
+      {/* D. KAM and KFM Trend Chart */}
+      <section aria-labelledby="knee-load-trend-heading" className="space-y-2">
         <LoadTrendChart data={mockLoadTrend} />
+
+        <p className="text-xs text-[#718096] px-1">
+          Confidence band: coming next. Uncertainty estimates have not yet been validated.
+        </p>
       </section>
 
       {/* ============================================================
@@ -176,7 +186,7 @@ export const Dashboard: React.FC = () => {
                   Gait Cycles
                 </th>
                 <th scope="col" className="px-6 py-3 text-[11px] font-semibold text-[#718096] uppercase tracking-wider">
-                  Average Estimated Load
+                  Avg Moment (KAM)
                 </th>
                 <th scope="col" className="px-6 py-3 text-[11px] font-semibold text-[#718096] uppercase tracking-wider text-right">
                   Status
@@ -225,7 +235,7 @@ export const Dashboard: React.FC = () => {
                       {session.gaitCycles}
                     </td>
                     <td className="px-6 py-4 text-xs font-bold text-[#172B4D] tabular-nums">
-                      {session.averageEstimatedLoad}
+                      {session.averageKAM || session.averageEstimatedLoad || '–'}
                     </td>
                     <td className="px-6 py-4 text-xs text-right">
                       {getStatusBadge(session.status)}

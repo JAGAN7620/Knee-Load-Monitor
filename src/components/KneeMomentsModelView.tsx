@@ -9,15 +9,19 @@ import {
   Tooltip,
   ReferenceLine
 } from 'recharts';
-import { 
-  PersonOption, 
-  SensorConfigOption 
+import {
+  PersonOption,
+  SensorConfigOption
 } from '../types';
-import { 
-  PERSON_OPTIONS, 
-  SENSOR_OPTIONS, 
-  getKneeMomentCurves 
+import {
+  PERSON_OPTIONS,
+  SENSOR_OPTIONS,
+  getKneeMomentCurves
 } from '../data';
+import {
+  loadReplayData,
+  ReplayDataResult
+} from '../services/replayDataService';
 
 export const KneeMomentsModelView: React.FC = () => {
   const [person, setPerson] = useState<PersonOption>('Sample person A');
@@ -27,9 +31,30 @@ export const KneeMomentsModelView: React.FC = () => {
   const [activeCursor, setActiveCursor] = useState<number | null>(null);
 
   const playTimerRef = useRef<number | null>(null);
+  const [replayData, setReplayData] = useState<ReplayDataResult | null>(null);
 
-  // Generate curves based on current selections
-  const data = getKneeMomentCurves(person, sensors, step);
+  // Generate sample curves as the fallback
+  const sampleData = getKneeMomentCurves(person, sensors, step);
+
+  // Load real experimental data when available
+  useEffect(() => {
+    let cancelled = false;
+
+    setReplayData(null);
+
+    loadReplayData(person, step).then((result) => {
+      if (!cancelled) {
+        setReplayData(result);
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [person, step]);
+
+  // Prefer real experimental data; otherwise use sample curves
+  const data = replayData?.data ?? sampleData;
 
   // Animate playback across stance phase when Play Step is active
   useEffect(() => {
@@ -64,8 +89,23 @@ export const KneeMomentsModelView: React.FC = () => {
       {/* ============================================================
           1. Disclaimer Banner
           ============================================================ */}
-      <div className="bg-[#FFF8E6] border border-[#FDE68A] rounded-md px-4 py-3 text-xs sm:text-sm text-[#92400E] leading-relaxed shadow-2xs">
-        Sample curves only. These are drawn to show the layout and are not real data or model output. They will be replaced with baseline LSTM predictions.
+      <div
+        className={`rounded-md px-4 py-3 text-xs sm:text-sm leading-relaxed shadow-2xs border ${replayData
+          ? 'bg-[#ECFDF5] border-[#A7F3D0] text-[#065F46]'
+          : 'bg-[#FFF8E6] border-[#FDE68A] text-[#92400E]'
+          }`}
+      >
+        {replayData ? (
+          <>
+            Experimental data loaded. Source: <strong>{replayData.source}</strong>.
+            Model: <strong>{replayData.model}</strong>. Units: %BW·BH.
+          </>
+        ) : (
+          <>
+            Sample curves only. No valid experimental results were found.
+            These curves are illustrative and are not real data or model output.
+          </>
+        )}
       </div>
 
       {/* ============================================================
@@ -135,7 +175,11 @@ export const KneeMomentsModelView: React.FC = () => {
                 className="w-64 appearance-none bg-white border border-[#E5E7EB] hover:border-[#F59E5B] text-[#172B4D] text-xs sm:text-sm font-medium rounded-md px-3 py-1.5 pr-8 focus:outline-none focus:ring-1 focus:ring-[#E87532] focus:border-[#E87532] cursor-pointer shadow-2xs transition-colors"
               >
                 {SENSOR_OPTIONS.map((opt) => (
-                  <option key={opt} value={opt}>
+                  <option
+                    key={opt}
+                    value={opt}
+                    disabled={opt !== '8 IMUs (baseline)'}
+                  >
                     {opt}
                   </option>
                 ))}
@@ -199,8 +243,7 @@ export const KneeMomentsModelView: React.FC = () => {
                   }}
                 />
                 <YAxis
-                  domain={[-0.5, 1.2]}
-                  ticks={[-0.5, 0.0, 0.5, 1.0]}
+                  domain={['auto', 'auto']}
                   stroke="#718096"
                   fontSize={11}
                   tickLine={false}
@@ -275,8 +318,7 @@ export const KneeMomentsModelView: React.FC = () => {
                   }}
                 />
                 <YAxis
-                  domain={[-1.6, 2.2]}
-                  ticks={[-1.5, -1.0, -0.5, 0.0, 0.5, 1.0, 1.5, 2.0]}
+                  domain={['auto', 'auto']}
                   stroke="#718096"
                   fontSize={11}
                   tickLine={false}

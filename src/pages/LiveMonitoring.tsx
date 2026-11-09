@@ -1,13 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { 
-  Play, 
-  Pause, 
-  Square, 
-  RotateCcw, 
-  Cpu, 
-  Radio, 
-  BatteryMedium, 
-  Clock, 
+import {
+  Play,
+  Pause,
+  Square,
+  RotateCcw,
+  Cpu,
+  Radio,
+  BatteryMedium,
+  Clock,
   Info,
   ShieldAlert,
   Wifi
@@ -20,9 +20,7 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
-  Legend,
-  AreaChart,
-  Area
+  Legend
 } from 'recharts';
 import { initialThighIMU, initialShankIMU } from '../data';
 
@@ -36,7 +34,8 @@ interface SignalPoint {
   thighGx: number;
   thighGy: number;
   thighGz: number;
-  estimatedLoad: number;
+  estimatedKAM: number;
+  estimatedKFM: number;
 }
 
 export const LiveMonitoring: React.FC = () => {
@@ -44,14 +43,15 @@ export const LiveMonitoring: React.FC = () => {
   const [elapsedSeconds, setElapsedSeconds] = useState(755); // 12m 35s default
   const [thighReadings, setThighReadings] = useState(initialThighIMU);
   const [shankReadings, setShankReadings] = useState(initialShankIMU);
-  const [currentLoad, setCurrentLoad] = useState(245);
+  const [currentKAM, setCurrentKAM] = useState(0.42);
+  const [currentKFM, setCurrentKFM] = useState(0.68);
   const [signals, setSignals] = useState<SignalPoint[]>([
-    { time: '12:25', thighAx: 0.4, thighAy: 9.8, thighAz: 1.1, thighGx: 12.0, thighGy: -3.5, thighGz: 5.2, estimatedLoad: 210 },
-    { time: '12:27', thighAx: 1.2, thighAy: 11.2, thighAz: 1.6, thighGx: 28.5, thighGy: -1.2, thighGz: 7.8, estimatedLoad: 280 },
-    { time: '12:29', thighAx: 2.1, thighAy: 13.4, thighAz: 2.3, thighGx: 45.0, thighGy: 2.4, thighGz: 11.5, estimatedLoad: 320 },
-    { time: '12:31', thighAx: 0.8, thighAy: 10.1, thighAz: 1.4, thighGx: 18.2, thighGy: -2.0, thighGz: 6.0, estimatedLoad: 260 },
-    { time: '12:33', thighAx: -0.3, thighAy: 9.2, thighAz: 0.9, thighGx: -5.4, thighGy: -4.8, thighGz: 3.1, estimatedLoad: 180 },
-    { time: '12:35', thighAx: 0.42, thighAy: 9.78, thighAz: 1.15, thighGx: 12.4, thighGy: -3.8, thighGz: 5.6, estimatedLoad: 245 },
+    { time: '12:25', thighAx: 0.4, thighAy: 9.8, thighAz: 1.1, thighGx: 12.0, thighGy: -3.5, thighGz: 5.2, estimatedKAM: 0.32, estimatedKFM: 0.45 },
+    { time: '12:27', thighAx: 1.2, thighAy: 11.2, thighAz: 1.6, thighGx: 28.5, thighGy: -1.2, thighGz: 7.8, estimatedKAM: 0.38, estimatedKFM: 0.58 },
+    { time: '12:29', thighAx: 2.1, thighAy: 13.4, thighAz: 2.3, thighGx: 45.0, thighGy: 2.4, thighGz: 11.5, estimatedKAM: 0.45, estimatedKFM: 0.72 },
+    { time: '12:31', thighAx: 0.8, thighAy: 10.1, thighAz: 1.4, thighGx: 18.2, thighGy: -2.0, thighGz: 6.0, estimatedKAM: 0.55, estimatedKFM: 0.82 },
+    { time: '12:33', thighAx: -0.3, thighAy: 9.2, thighAz: 0.9, thighGx: -5.4, thighGy: -4.8, thighGz: 3.1, estimatedKAM: 0.40, estimatedKFM: 0.60 },
+    { time: '12:35', thighAx: 0.42, thighAy: 9.78, thighAz: 1.15, thighGx: 12.4, thighGy: -3.8, thighGz: 5.6, estimatedKAM: 0.42, estimatedKFM: 0.68 },
   ]);
 
   const intervalRef = useRef<number | null>(null);
@@ -92,8 +92,13 @@ export const LiveMonitoring: React.FC = () => {
           gz: Number((-8.7 + cosOscillation * 11.0).toFixed(1)),
         });
 
-        const newEstimated = Math.round(245 + Math.abs(oscillation) * 95);
-        setCurrentLoad(newEstimated);
+        // Illustrative KAM and KFM simulation values.
+        // These are not actual model predictions.
+        const newKAM = Number((0.42 + Math.abs(oscillation) * 0.15).toFixed(3));
+        const newKFM = Number((0.68 + Math.abs(cosOscillation) * 0.20).toFixed(3));
+
+        setCurrentKAM(newKAM);
+        setCurrentKFM(newKFM);
 
         setSignals((prev) => {
           const now = new Date();
@@ -106,7 +111,8 @@ export const LiveMonitoring: React.FC = () => {
             thighGx: newThighGx,
             thighGy: newThighGy,
             thighGz: newThighGz,
-            estimatedLoad: newEstimated,
+            estimatedKAM: newKAM,
+            estimatedKFM: newKFM,
           };
           const updated = [...prev.slice(-14), nextPoint];
           return updated;
@@ -138,7 +144,8 @@ export const LiveMonitoring: React.FC = () => {
     setElapsedSeconds(0);
     setThighReadings(initialThighIMU);
     setShankReadings(initialShankIMU);
-    setCurrentLoad(245);
+    setCurrentKAM(0.42);
+    setCurrentKFM(0.68);
   };
 
   return (
@@ -170,26 +177,24 @@ export const LiveMonitoring: React.FC = () => {
                 </span>
                 {/* State Badge */}
                 <span
-                  className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold border ${
-                    status === 'Running'
-                      ? 'bg-[#ECFDF5] text-[#16A36A] border-[#A7F3D0]'
-                      : status === 'Paused'
+                  className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold border ${status === 'Running'
+                    ? 'bg-[#ECFDF5] text-[#16A36A] border-[#A7F3D0]'
+                    : status === 'Paused'
                       ? 'bg-[#FFFBEB] text-[#B45309] border-[#FDE68A]'
                       : status === 'Stopped'
-                      ? 'bg-[#FEF2F2] text-[#B91C1C] border-[#FECACA]'
-                      : 'bg-[#F7F8FA] text-[#718096] border-[#E5E7EB]'
-                  }`}
+                        ? 'bg-[#FEF2F2] text-[#B91C1C] border-[#FECACA]'
+                        : 'bg-[#F7F8FA] text-[#718096] border-[#E5E7EB]'
+                    }`}
                 >
                   <span
-                    className={`w-2 h-2 rounded-full ${
-                      status === 'Running'
-                        ? 'bg-[#16A36A] animate-pulse'
-                        : status === 'Paused'
+                    className={`w-2 h-2 rounded-full ${status === 'Running'
+                      ? 'bg-[#16A36A] animate-pulse'
+                      : status === 'Paused'
                         ? 'bg-[#F59E0B]'
                         : status === 'Stopped'
-                        ? 'bg-[#EF4444]'
-                        : 'bg-[#A0AEC0]'
-                    }`}
+                          ? 'bg-[#EF4444]'
+                          : 'bg-[#A0AEC0]'
+                      }`}
                   ></span>
                   {status}
                 </span>
@@ -263,14 +268,14 @@ export const LiveMonitoring: React.FC = () => {
           Device Connectivity
         </h3>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {/* Thigh IMU Card */}
+          {/* Sensor 1 Card */}
           <div className="bg-white border border-[#E5E7EB] rounded-lg p-4 shadow-sm flex items-center justify-between">
             <div className="flex items-center space-x-3">
               <div className="p-2.5 rounded-md bg-[#FFF1E8] text-[#E87532]">
                 <Radio className="w-4 h-4" />
               </div>
               <div>
-                <h4 className="text-sm font-bold text-[#172B4D]">Thigh IMU</h4>
+                <h4 className="text-sm font-bold text-[#172B4D]">Sensor 1</h4>
                 <div className="flex items-center gap-1.5 mt-0.5 text-[11px] text-[#16A36A]">
                   <span className="w-1.5 h-1.5 rounded-full bg-[#16A36A] animate-pulse"></span>
                   <span>Connected (Simulated)</span>
@@ -286,14 +291,14 @@ export const LiveMonitoring: React.FC = () => {
             </div>
           </div>
 
-          {/* Shank IMU Card */}
+          {/* Sensor 2 Card */}
           <div className="bg-white border border-[#E5E7EB] rounded-lg p-4 shadow-sm flex items-center justify-between">
             <div className="flex items-center space-x-3">
               <div className="p-2.5 rounded-md bg-[#FFF1E8] text-[#E87532]">
                 <Radio className="w-4 h-4" />
               </div>
               <div>
-                <h4 className="text-sm font-bold text-[#172B4D]">Shank IMU</h4>
+                <h4 className="text-sm font-bold text-[#172B4D]">Sensor 2</h4>
                 <div className="flex items-center gap-1.5 mt-0.5 text-[11px] text-[#16A36A]">
                   <span className="w-1.5 h-1.5 rounded-full bg-[#16A36A] animate-pulse"></span>
                   <span>Connected (Simulated)</span>
@@ -335,21 +340,21 @@ export const LiveMonitoring: React.FC = () => {
       </section>
 
       {/* ============================================================
-          SECTION C: Sensor Readings (2 Panels: Thigh vs Shank)
+          {/* SECTION C: Sensor Readings (2 Sensor Panels) 
           ============================================================ */}
       <section aria-labelledby="sensor-readings-heading">
         <h3 id="sensor-readings-heading" className="text-sm font-bold text-[#172B4D] uppercase tracking-wider mb-3">
           Direct Kinematic Readings (IMU)
         </h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-          {/* THIGH IMU Panel */}
+          {/* Sensor 1 Panel */}
           <div className="bg-white border border-[#E5E7EB] rounded-lg p-5 shadow-sm">
             <div className="flex items-center justify-between pb-3 border-b border-[#E5E7EB] mb-4">
               <div className="flex items-center gap-2">
                 <span className="w-2.5 h-2.5 rounded-full bg-[#E87532]"></span>
-                <h4 className="text-sm font-bold text-[#172B4D]">Thigh IMU Readings</h4>
+                <h4 className="text-sm font-bold text-[#172B4D]">Sensor 1 Readings</h4>
               </div>
-              <span className="text-[11px] text-[#718096] font-mono">Location: Distal Thigh</span>
+              <span className="text-[11px] text-[#718096] font-mono">Placement: To be decided</span>
             </div>
 
             <div className="space-y-4">
@@ -397,14 +402,14 @@ export const LiveMonitoring: React.FC = () => {
             </div>
           </div>
 
-          {/* SHANK IMU Panel */}
+          {/* Sensor 2 Panel */}
           <div className="bg-white border border-[#E5E7EB] rounded-lg p-5 shadow-sm">
             <div className="flex items-center justify-between pb-3 border-b border-[#E5E7EB] mb-4">
               <div className="flex items-center gap-2">
                 <span className="w-2.5 h-2.5 rounded-full bg-[#172B4D]"></span>
-                <h4 className="text-sm font-bold text-[#172B4D]">Shank IMU Readings</h4>
+                <h4 className="text-sm font-bold text-[#172B4D]">Sensor 2 Readings</h4>
               </div>
-              <span className="text-[11px] text-[#718096] font-mono">Location: Proximal Shank</span>
+              <span className="text-[11px] text-[#718096] font-mono">Placement: To be decided</span>
             </div>
 
             <div className="space-y-4">
@@ -471,7 +476,7 @@ export const LiveMonitoring: React.FC = () => {
                 <p className="text-[11px] text-[#718096]">Tri-axial acceleration in m/s²</p>
               </div>
               <span className="text-[10px] font-mono text-[#718096] bg-[#F7F8FA] px-2 py-0.5 rounded border border-[#E5E7EB]">
-                Thigh Sensor
+                Sensor 1
               </span>
             </div>
 
@@ -504,7 +509,7 @@ export const LiveMonitoring: React.FC = () => {
                 <p className="text-[11px] text-[#718096]">Tri-axial angular velocity in °/s</p>
               </div>
               <span className="text-[10px] font-mono text-[#718096] bg-[#F7F8FA] px-2 py-0.5 rounded border border-[#E5E7EB]">
-                Thigh Sensor
+                Sensor 1
               </span>
             </div>
 
@@ -531,103 +536,154 @@ export const LiveMonitoring: React.FC = () => {
         </div>
       </section>
 
-      {/* ============================================================
-          SECTION E: Knee Loading Estimation (Prominent Distinction)
-          ============================================================ */}
-      <section className="bg-white border border-[#E5E7EB] rounded-lg p-5 sm:p-6 shadow-sm" aria-labelledby="knee-load-estimation-heading">
-        {/* Distinction Banner */}
-        <div className="mb-6 p-4 rounded-lg bg-[#FFF1E8] border border-[#FFE4D4] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div className="flex items-start gap-3">
-            <div className="p-2 rounded bg-white text-[#E87532] border border-[#FFE4D4] shrink-0 mt-0.5">
-              <ShieldAlert className="w-4 h-4" />
-            </div>
-            <div>
-              <h4 className="text-xs font-bold text-[#172B4D] uppercase tracking-wider">
-                Measurement Distinction &bull; Kinematics vs. Joint Contact Load
-              </h4>
-              <p className="text-xs text-[#718096] mt-0.5 leading-relaxed">
-                The IMU sensors measure acceleration and angular velocity directly. Knee contact force (N) is an <strong>estimated biomechanical quantity</strong> computed via simulated computational models and is not a direct force plate or load-cell measurement.
-              </p>
-            </div>
-          </div>
-          <span className="px-2.5 py-1 rounded bg-white text-[#E87532] text-xs font-semibold whitespace-nowrap self-start sm:self-auto border border-[#FFE4D4]">
-            Simulated Transfer Function
-          </span>
-        </div>
-
-        {/* Estimation Readout & Chart */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Readout Numbers */}
-          <div className="space-y-4 flex flex-col justify-center">
-            <div className="p-4 rounded-lg bg-[#F7F8FA] border border-[#E5E7EB]">
-              <span className="text-xs font-semibold text-[#718096] uppercase tracking-wider block">
-                Current Estimated Knee Load
-              </span>
-              <div className="flex items-baseline gap-2 mt-1">
-                <span className="text-3xl sm:text-4xl font-extrabold text-[#172B4D] tabular-nums">
-                  {currentLoad}
-                </span>
-                <span className="text-base font-semibold text-[#E87532]">Newtons (N)</span>
-              </div>
-              <span className="text-[11px] text-[#718096] block mt-1">
-                Estimated instantaneous compressive axial load
-              </span>
-            </div>
-
-            <div className="p-4 rounded-lg bg-[#F7F8FA] border border-[#E5E7EB]">
-              <span className="text-xs font-semibold text-[#718096] uppercase tracking-wider block">
-                Model Uncertainty Window
-              </span>
-              <div className="flex items-baseline gap-2 mt-1">
-                <span className="text-2xl sm:text-3xl font-bold text-[#172B4D] tabular-nums">
-                  ±18
-                </span>
-                <span className="text-sm font-semibold text-[#718096]">N (95% CI)</span>
-              </div>
-              <span className="text-[11px] text-[#718096] block mt-1">
-                Dynamic uncertainty based on sensor drift estimate
-              </span>
-            </div>
+      {/* SECTION E: KAM and KFM Estimation */}
+      <section
+        className="bg-white border border-[#E5E7EB] rounded-lg p-5 sm:p-6 shadow-sm"
+        aria-labelledby="knee-load-estimation-heading"
+      >
+        {/* Measurement Distinction */}
+        <div className="mb-6 p-4 rounded-lg bg-[#FFF1E8] border border-[#FFE4D4] flex items-start gap-3">
+          <div className="p-2 rounded bg-white text-[#E87532] border border-[#FFE4D4] shrink-0">
+            <ShieldAlert className="w-4 h-4" />
           </div>
 
-          {/* Real-time Load Trend Area Chart (Burnt Orange) */}
-          <div className="lg:col-span-2">
-            <div className="flex items-center justify-between mb-2">
-              <h4 className="text-xs font-bold text-[#172B4D] uppercase tracking-wider">
-                Recent Estimated Load Trajectory
-              </h4>
-              <span className="text-[11px] text-[#718096]">Moving Window (Last 15 updates)</span>
-            </div>
-            <div className="w-full h-56">
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={signals} margin={{ top: 5, right: 10, left: -10, bottom: 0 }}>
-                  <defs>
-                    <linearGradient id="loadGradient" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#E87532" stopOpacity={0.25} />
-                      <stop offset="95%" stopColor="#E87532" stopOpacity={0.0} />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" vertical={false} />
-                  <XAxis dataKey="time" stroke="#718096" fontSize={11} tickLine={false} />
-                  <YAxis stroke="#718096" fontSize={11} tickLine={false} unit=" N" domain={[100, 400]} />
-                  <Tooltip
-                    contentStyle={{ backgroundColor: '#FFFFFF', borderColor: '#E5E7EB', borderRadius: '0.375rem', fontSize: '11px' }}
-                  />
-                  <Area
-                    type="monotone"
-                    dataKey="estimatedLoad"
-                    name="Estimated Load"
-                    stroke="#E87532"
-                    strokeWidth={2.5}
-                    fillOpacity={1}
-                    fill="url(#loadGradient)"
-                    isAnimationActive={false}
-                  />
-                </AreaChart>
-              </ResponsiveContainer>
-            </div>
+          <div>
+            <h4 className="text-xs font-bold text-[#172B4D] uppercase tracking-wider">
+              Measurement Distinction
+            </h4>
+            <p className="text-xs text-[#718096] mt-1 leading-relaxed">
+              IMU sensors directly measure acceleration and angular velocity.
+              KAM and KFM are estimated biomechanical quantities, not direct
+              force measurements. The values currently displayed are simulated
+              placeholders.
+            </p>
           </div>
         </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+
+          {/* KAM */}
+          <div className="p-5 rounded-lg bg-[#F7F8FA] border border-[#E5E7EB]">
+            <span className="text-xs font-semibold text-[#718096] uppercase tracking-wider">
+              Knee Adduction Moment (KAM)
+            </span>
+
+            <div className="flex items-baseline gap-2 mt-3">
+              <span className="text-3xl sm:text-4xl font-extrabold text-[#172B4D] tabular-nums">
+                {currentKAM.toFixed(3)}
+              </span>
+              <span className="text-sm font-semibold text-[#E87532]">
+                %BW·BH
+              </span>
+            </div>
+
+            <span className="text-[11px] text-[#718096] block mt-2">
+              Simulated sample value
+            </span>
+          </div>
+
+          {/* KFM */}
+          <div className="p-5 rounded-lg bg-[#F7F8FA] border border-[#E5E7EB]">
+            <span className="text-xs font-semibold text-[#718096] uppercase tracking-wider">
+              Knee Flexion Moment (KFM)
+            </span>
+
+            <div className="flex items-baseline gap-2 mt-3">
+              <span className="text-3xl sm:text-4xl font-extrabold text-[#172B4D] tabular-nums">
+                {currentKFM.toFixed(3)}
+              </span>
+              <span className="text-sm font-semibold text-[#E87532]">
+                %BW·BH
+              </span>
+            </div>
+
+            <span className="text-[11px] text-[#718096] block mt-2">
+              Simulated sample value
+            </span>
+          </div>
+        </div>
+
+        {/* KAM and KFM Trend Chart */}
+        <div className="mt-7">
+          <div className="flex items-center justify-between mb-3">
+            <h4 className="text-xs font-bold text-[#172B4D] uppercase tracking-wider">
+              KAM and KFM Trend
+            </h4>
+
+            <span className="text-[11px] text-[#718096]">
+              Last 15 simulated updates
+            </span>
+          </div>
+
+          <div className="w-full h-64">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart
+                data={signals}
+                margin={{ top: 5, right: 10, left: -10, bottom: 0 }}
+              >
+                <CartesianGrid
+                  strokeDasharray="3 3"
+                  stroke="#E5E7EB"
+                  vertical={false}
+                />
+
+                <XAxis
+                  dataKey="time"
+                  stroke="#718096"
+                  fontSize={11}
+                  tickLine={false}
+                />
+
+                <YAxis
+                  stroke="#718096"
+                  fontSize={11}
+                  tickLine={false}
+                  unit=" %BW·BH"
+                  domain={['auto', 'auto']}
+                />
+
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: '#FFFFFF',
+                    borderColor: '#E5E7EB',
+                    borderRadius: '0.375rem',
+                    fontSize: '11px',
+                  }}
+                />
+
+                <Legend
+                  verticalAlign="top"
+                  height={30}
+                  iconSize={8}
+                  wrapperStyle={{ fontSize: '11px' }}
+                />
+
+                <Line
+                  type="monotone"
+                  dataKey="estimatedKAM"
+                  name="KAM"
+                  stroke="#E87532"
+                  strokeWidth={2.5}
+                  dot={false}
+                  isAnimationActive={false}
+                />
+
+                <Line
+                  type="monotone"
+                  dataKey="estimatedKFM"
+                  name="KFM"
+                  stroke="#172B4D"
+                  strokeWidth={2.5}
+                  dot={false}
+                  isAnimationActive={false}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+        <p className="text-xs text-[#718096] mt-3 px-1">
+          Confidence band: coming next. Uncertainty estimates have not yet been validated.
+        </p>
       </section>
     </div>
   );

@@ -1,6 +1,6 @@
-import { 
-  SensorConnectivityItem, 
-  LoadTrendPoint, 
+import {
+  SensorConnectivityItem,
+  LoadTrendPoint,
   SessionSummaryRow,
   GaitCyclePoint,
   SystemActivityLog,
@@ -11,17 +11,17 @@ import {
 
 /** Current telemetry overview metrics */
 export const mockDashboardMetrics = {
-  estimatedKneeLoad: 245,
-  loadUnit: 'N',
-  loadLabel: 'Current estimated value',
-  
-  modelUncertainty: 18,
-  uncertaintyUnit: 'N',
-  uncertaintyLabel: 'Estimated uncertainty',
-  
+  estimatedKAM: 0.42,
+  kamUnit: '%BW·BH',
+  kamLabel: 'Knee Adduction Moment',
+
+  estimatedKFM: 0.68,
+  kfmUnit: '%BW·BH',
+  kfmLabel: 'Knee Flexion Moment',
+
   monitoringDuration: '12 min 35 sec',
   durationLabel: 'Elapsed session time',
-  
+
   gaitCycles: 128,
   cyclesUnit: 'cycles',
   cyclesLabel: 'Recorded stride cycles',
@@ -30,9 +30,9 @@ export const mockDashboardMetrics = {
 /** Mock sensor connectivity statuses */
 export const mockSensors: SensorConnectivityItem[] = [
   {
-    id: 'imu-thigh-01',
-    name: 'Thigh IMU',
-    role: 'Thigh IMU',
+    id: 'imu-sensor-01',
+    name: 'Sensor 1',
+    role: 'Sensor 1',
     status: 'connected',
     simulatedState: 'Telemetry Stream Active (100 Hz)',
     lastUpdate: 'Just now',
@@ -40,9 +40,9 @@ export const mockSensors: SensorConnectivityItem[] = [
     signalStrength: '-56 dBm (Simulated)',
   },
   {
-    id: 'imu-shank-02',
-    name: 'Shank IMU',
-    role: 'Shank IMU',
+    id: 'imu-sensor-02',
+    name: 'Sensor 2',
+    role: 'Sensor 2',
     status: 'connected',
     simulatedState: 'Telemetry Stream Active (100 Hz)',
     lastUpdate: 'Just now',
@@ -65,19 +65,19 @@ export const mockSensors: SensorConnectivityItem[] = [
  * Knee load trend time series (Simulated stance and swing gait loading)
  */
 export const mockLoadTrend: LoadTrendPoint[] = [
-  { time: '00:00', estimatedLoad: 160, uncertaintyUpper: 178, uncertaintyLower: 142 },
-  { time: '01:00', estimatedLoad: 195, uncertaintyUpper: 213, uncertaintyLower: 177 },
-  { time: '02:00', estimatedLoad: 230, uncertaintyUpper: 248, uncertaintyLower: 212 },
-  { time: '03:00', estimatedLoad: 280, uncertaintyUpper: 300, uncertaintyLower: 260 },
-  { time: '04:00', estimatedLoad: 245, uncertaintyUpper: 263, uncertaintyLower: 227 },
-  { time: '05:00', estimatedLoad: 310, uncertaintyUpper: 330, uncertaintyLower: 290 },
-  { time: '06:00', estimatedLoad: 265, uncertaintyUpper: 283, uncertaintyLower: 247 },
-  { time: '07:00', estimatedLoad: 220, uncertaintyUpper: 238, uncertaintyLower: 202 },
-  { time: '08:00', estimatedLoad: 295, uncertaintyUpper: 315, uncertaintyLower: 275 },
-  { time: '09:00', estimatedLoad: 275, uncertaintyUpper: 293, uncertaintyLower: 257 },
-  { time: '10:00', estimatedLoad: 240, uncertaintyUpper: 258, uncertaintyLower: 222 },
-  { time: '11:00', estimatedLoad: 250, uncertaintyUpper: 268, uncertaintyLower: 232 },
-  { time: '12:00', estimatedLoad: 245, uncertaintyUpper: 263, uncertaintyLower: 227 },
+  { time: '00:00', estimatedKAM: 0.32, estimatedKFM: 0.45 },
+  { time: '01:00', estimatedKAM: 0.38, estimatedKFM: 0.58 },
+  { time: '02:00', estimatedKAM: 0.45, estimatedKFM: 0.72 },
+  { time: '03:00', estimatedKAM: 0.55, estimatedKFM: 0.82 },
+  { time: '04:00', estimatedKAM: 0.48, estimatedKFM: 0.65 },
+  { time: '05:00', estimatedKAM: 0.62, estimatedKFM: 0.90 },
+  { time: '06:00', estimatedKAM: 0.52, estimatedKFM: 0.75 },
+  { time: '07:00', estimatedKAM: 0.40, estimatedKFM: 0.60 },
+  { time: '08:00', estimatedKAM: 0.58, estimatedKFM: 0.85 },
+  { time: '09:00', estimatedKAM: 0.54, estimatedKFM: 0.78 },
+  { time: '10:00', estimatedKAM: 0.46, estimatedKFM: 0.66 },
+  { time: '11:00', estimatedKAM: 0.49, estimatedKFM: 0.70 },
+  { time: '12:00', estimatedKAM: 0.47, estimatedKFM: 0.68 },
 ];
 
 /** Recent monitoring sessions with extended metrics for reports */
@@ -87,10 +87,13 @@ export const mockRecentSessions: SessionSummaryRow[] = [
     date: 'Nov 08, 2026',
     duration: '12 min 35 sec',
     gaitCycles: 128,
-    averageEstimatedLoad: '245 N',
-    peakEstimatedLoad: '310 N',
+    averageKAM: '0.42 %BW·BH',
+    averageKFM: '0.68 %BW·BH',
+    averageEstimatedLoad: '0.42 %BW·BH',
+    peakKAM: '0.62 %BW·BH',
+    peakKFM: '0.90 %BW·BH',
     status: 'Active',
-    notes: 'Live trial evaluation at steady walking cadence (1.1 m/s).',
+    notes: 'Simulated sample session.',
     avgFlexion: '54.2°',
   },
   {
@@ -98,33 +101,14 @@ export const mockRecentSessions: SessionSummaryRow[] = [
     date: 'Nov 08, 2026',
     duration: '28 min 10 sec',
     gaitCycles: 364,
-    averageEstimatedLoad: '258 N',
-    peakEstimatedLoad: '342 N',
+    averageKAM: '0.45 %BW·BH',
+    averageKFM: '0.72 %BW·BH',
+    averageEstimatedLoad: '0.45 %BW·BH',
+    peakKAM: '0.65 %BW·BH',
+    peakKFM: '0.95 %BW·BH',
     status: 'Completed',
-    notes: 'Extended corridor walking protocol, normal stride frequency.',
+    notes: 'Simulated sample session.',
     avgFlexion: '56.1°',
-  },
-  {
-    sessionId: 'KLM-SES-1046',
-    date: 'Nov 07, 2026',
-    duration: '35 min 45 sec',
-    gaitCycles: 490,
-    averageEstimatedLoad: '232 N',
-    peakEstimatedLoad: '298 N',
-    status: 'Completed',
-    notes: 'Treadmill calibration protocol at incremental incline.',
-    avgFlexion: '51.8°',
-  },
-  {
-    sessionId: 'KLM-SES-1045',
-    date: 'Nov 05, 2026',
-    duration: '15 min 20 sec',
-    gaitCycles: 195,
-    averageEstimatedLoad: '270 N',
-    peakEstimatedLoad: '355 N',
-    status: 'Archived',
-    notes: 'Baseline repeatability test post-sensor calibration.',
-    avgFlexion: '55.4°',
   },
 ];
 
@@ -223,14 +207,14 @@ export const mockActivityLogs: SystemActivityLog[] = [
   {
     id: 'log-002',
     timestamp: '10:14:25',
-    component: 'Thigh IMU',
+    component: 'Sensor 1',
     event: 'Inertial calibration zero-offset applied',
     status: 'Success',
   },
   {
     id: 'log-003',
     timestamp: '10:14:22',
-    component: 'Shank IMU',
+    component: 'Sensor 2',
     event: 'Synchronized sampling clock at 100 Hz',
     status: 'Success',
   },
@@ -259,7 +243,7 @@ export const mockActivityLogs: SystemActivityLog[] = [
     id: 'log-007',
     timestamp: '10:05:12',
     component: 'Kinematics Model',
-    event: 'Heuristic filter initialized with ±18 N baseline uncertainty',
+    event: 'Sample-data processing initialized (Simulated)',
     status: 'Info',
   },
 ];
@@ -296,7 +280,7 @@ export const PERSON_OPTIONS: PersonOption[] = [
 export const SENSOR_OPTIONS: SensorConfigOption[] = [
   '8 IMUs (baseline)',
   '3 IMUs (coming next)',
-  '2 IMUs: thigh + shank (coming next)',
+  '2 IMUs: best pair (after the placement study)',
 ];
 
 /**
@@ -305,12 +289,13 @@ export const SENSOR_OPTIONS: SensorConfigOption[] = [
  */
 export function getKneeMomentCurves(
   person: PersonOption,
-  sensorConfig: SensorConfigOption,
+  _sensorConfig: SensorConfigOption,
   stepNumber: number
 ): KneeMomentDataPoint[] {
   // Scaling factors per person
   let personScaleKAM = 1.0;
   let personScaleKFM = 1.0;
+
   if (person === 'Sample person B') {
     personScaleKAM = 1.15;
     personScaleKFM = 1.12;
@@ -322,16 +307,9 @@ export function getKneeMomentCurves(
   // Step variability (+/- 4%)
   const stepDrift = Math.sin(stepNumber * 1.35) * 0.04;
 
-  // Sensor configuration error magnitude
-  let noiseMultiplier = 0.035; // 8 IMUs baseline
-  let lagOffset = 0;
-  if (sensorConfig === '3 IMUs (coming next)') {
-    noiseMultiplier = 0.085;
-    lagOffset = 0.03;
-  } else if (sensorConfig === '2 IMUs: thigh + shank (coming next)') {
-    noiseMultiplier = 0.135;
-    lagOffset = 0.05;
-  }
+  // Same illustrative sample error for every sensor configuration.
+  // No sensor-specific accuracy or lag is assumed.
+  const noiseMultiplier = 0.035;
 
   const points: KneeMomentDataPoint[] = [];
 
@@ -339,34 +317,37 @@ export function getKneeMomentCurves(
   for (let p = 0; p <= 100; p += 2.5) {
     const t = p / 100;
 
-    // --- Lab KAM (Bimodal double-peak curve) ---
-    // Peak 1 at t=0.25 (~1.05), trough at t=0.48 (~0.28), Peak 2 at t=0.68 (~1.03)
+    // Lab KAM (Bimodal double-peak curve)
     const peak1 = 1.04 * Math.exp(-Math.pow((t - 0.25) / 0.13, 2));
     const peak2 = 1.02 * Math.exp(-Math.pow((t - 0.68) / 0.14, 2));
     const baselineDip = 0.12 * Math.sin(Math.PI * t);
+
     const labKAM = Number(
       ((peak1 + peak2 + baselineDip) * (personScaleKAM + stepDrift)).toFixed(3)
     );
 
-    // --- Model KAM Estimate (Follows lab curve with sensor-specific variance) ---
+    // Model KAM Estimate (same sample error for all configurations)
     const kamNoise =
       Math.sin(t * 18 + stepNumber) * noiseMultiplier * 0.85 +
-      Math.cos(t * 26) * noiseMultiplier * 0.6 -
-      lagOffset * (t > 0.5 ? 0.07 : 0.0);
-    const modelKAM = Number(Math.max(-0.2, labKAM + kamNoise).toFixed(3));
+      Math.cos(t * 26) * noiseMultiplier * 0.6;
 
-    // --- Lab KFM (Unimodal early stance peak, crossing zero at ~60%, extension trough at ~82%) ---
-    // Peak at t=0.30 (~1.72), negative trough at t=0.82 (~ -0.85)
+    const modelKAM = Number(
+      Math.max(-0.2, labKAM + kamNoise).toFixed(3)
+    );
+
+    // Lab KFM
     const kfmPositive = 1.76 * Math.exp(-Math.pow((t - 0.30) / 0.18, 2));
     const kfmNegative = 0.88 * Math.exp(-Math.pow((t - 0.82) / 0.15, 2));
+
     const labKFM = Number(
       ((kfmPositive - kfmNegative) * (personScaleKFM + stepDrift)).toFixed(3)
     );
 
-    // --- Model KFM Estimate ---
+    // Model KFM Estimate (same sample error for all configurations)
     const kfmNoise =
       Math.sin(t * 16 + stepNumber) * noiseMultiplier * 1.1 +
       Math.cos(t * 22) * noiseMultiplier * 0.8;
+
     const modelKFM = Number((labKFM + kfmNoise).toFixed(3));
 
     points.push({

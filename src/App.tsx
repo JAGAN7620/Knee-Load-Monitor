@@ -1,13 +1,14 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { DashboardLayout } from './layouts/DashboardLayout';
-import { 
-  Dashboard, 
-  LiveMonitoring, 
-  GaitAnalysis, 
-  ResultsReports, 
-  SystemStatus, 
-  NotFoundPage 
+import {
+  Dashboard,
+  LiveMonitoring,
+  GaitAnalysis,
+  ResultsReports,
+  SystemStatus,
+  SensorPairRanking,
+  NotFoundPage
 } from './pages';
 import { ROUTES } from './utils';
 
@@ -23,6 +24,7 @@ export const App: React.FC = () => {
           <Route path={ROUTES.GAIT_ANALYSIS} element={<GaitAnalysis />} />
           <Route path={ROUTES.REPORTS} element={<ResultsReports />} />
           <Route path={ROUTES.SYSTEM_STATUS} element={<SystemStatus />} />
+          <Route path={ROUTES.SENSOR_PAIR_RANKING} element={<SensorPairRanking />} />
           <Route path="*" element={<NotFoundPage />} />
         </Route>
       </Routes>

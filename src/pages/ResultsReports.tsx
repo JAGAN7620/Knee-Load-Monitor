@@ -1,489 +1,360 @@
-import React, { useState } from 'react';
-import {
-  FileBarChart,
-  Download,
-  Printer,
-  Search,
-  Eye,
-  X,
-  Footprints,
-  Activity,
-  TrendingUp,
-  FileSpreadsheet
-} from 'lucide-react';
-import {
-  ResponsiveContainer,
-  BarChart,
-  Bar,
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend
-} from 'recharts';
-import { MetricCard } from '../components/MetricCard';
-import { mockRecentSessions } from '../data';
-import { SessionSummaryRow } from '../types';
+import React, { useEffect, useState } from 'react';
+import { Download, Printer, FileBarChart, Info } from 'lucide-react';
+
+interface MomentMetrics {
+  rmse: number | null;
+  relativeRmse: number | null;
+  correlation: number | null;
+}
+
+interface ModelEvaluation {
+  model: string;
+  sensorSet: string;
+  kam: MomentMetrics;
+  kfm: MomentMetrics;
+}
+
+interface EvaluationFile {
+  source?: string;
+  results: ModelEvaluation[];
+}
+
+const SENSOR_CONFIGURATIONS = [
+  '8 IMUs (baseline)',
+  '3 IMUs (coming next)',
+  '2 IMUs: best pair (after the placement study)',
+];
+
+const EMPTY_METRICS: MomentMetrics = {
+  rmse: null,
+  relativeRmse: null,
+  correlation: null,
+};
+
+const formatMetric = (value: number | null | undefined) => {
+  if (value === null || value === undefined || !Number.isFinite(value)) {
+    return '–';
+  }
+
+  return value.toFixed(3);
+};
 
 export const ResultsReports: React.FC = () => {
-  const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState<'All' | 'Active' | 'Completed' | 'Archived'>('All');
-  const [selectedSession, setSelectedSession] = useState<SessionSummaryRow | null>(null);
+  const [results, setResults] = useState<ModelEvaluation[]>([]);
+  const [source, setSource] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  // Filtered session list based on search and status
-  const filteredSessions = mockRecentSessions.filter((session) => {
-    const matchesSearch =
-      session.sessionId.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      session.date.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = statusFilter === 'All' || session.status === statusFilter;
-    return matchesSearch && matchesStatus;
-  });
+  useEffect(() => {
+    let cancelled = false;
 
-  // Calculate summary metrics dynamically from mock data
-  const totalSessions = mockRecentSessions.length;
-  const avgLoadNum = Math.round(
-    mockRecentSessions.reduce((sum, s) => sum + parseInt(s.averageEstimatedLoad), 0) / totalSessions
-  );
-  const peakLoadNum = Math.max(
-    ...mockRecentSessions.map((s) => parseInt(s.peakEstimatedLoad || s.averageEstimatedLoad))
-  );
-  const totalStrides = mockRecentSessions.reduce((sum, s) => sum + s.gaitCycles, 0);
+    const loadResults = async () => {
+      try {
+        const response = await fetch('/evaluation_results.json');
 
-  // Data for Session Comparison Charts
-  const chartData = mockRecentSessions.map((s) => ({
-    name: s.sessionId.replace('KLM-SES-', '#'),
-    averageLoad: parseInt(s.averageEstimatedLoad),
-    peakLoad: parseInt(s.peakEstimatedLoad || s.averageEstimatedLoad),
-    gaitCycles: s.gaitCycles,
-  })).reverse();
+        if (!response.ok) {
+          throw new Error('Evaluation results file not found');
+        }
 
-  // CSV Export Handler
+        const file: EvaluationFile = await response.json();
+
+        if (!Array.isArray(file.results)) {
+          throw new Error('Invalid evaluation results format');
+        }
+
+        if (!cancelled) {
+          setResults(file.results);
+          setSource(file.source ?? null);
+        }
+      } catch {
+        if (!cancelled) {
+          setResults([]);
+          setSource(null);
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    };
+
+    loadResults();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // Show known sensor configurations without inventing results.
+  const displayRows: ModelEvaluation[] =
+    results.length > 0
+      ? results
+      : SENSOR_CONFIGURATIONS.map((sensorSet) => ({
+        model: '–',
+        sensorSet,
+        kam: EMPTY_METRICS,
+        kfm: EMPTY_METRICS,
+      }));
+
+  // Export only the model-evaluation table.
   const handleExportCSV = () => {
     const headers = [
-      'Session ID',
-      'Date',
-      'Duration',
-      'Average Estimated Load (N)',
-      'Peak Estimated Load (N)',
-      'Gait Cycles',
-      'Average Flexion Angle',
-      'Status',
-      'Clinical Notes'
+      'Model',
+      'Sensor Configuration',
+      'KAM RMSE',
+      'KAM Relative RMSE',
+      'KAM Correlation',
+      'KFM RMSE',
+      'KFM Relative RMSE',
+      'KFM Correlation',
     ];
 
-    const rows = mockRecentSessions.map((s) => [
-      s.sessionId,
-      s.date,
-      `"${s.duration}"`,
-      parseInt(s.averageEstimatedLoad),
-      parseInt(s.peakEstimatedLoad || s.averageEstimatedLoad),
-      s.gaitCycles,
-      `"${s.avgFlexion || '54°'}"`,
-      s.status,
-      `"${s.notes || 'Simulated gait trial'}"`
+    const rows = displayRows.map((item) => [
+      item.model,
+      item.sensorSet,
+      formatMetric(item.kam?.rmse),
+      formatMetric(item.kam?.relativeRmse),
+      formatMetric(item.kam?.correlation),
+      formatMetric(item.kfm?.rmse),
+      formatMetric(item.kfm?.relativeRmse),
+      formatMetric(item.kfm?.correlation),
     ]);
 
-    const csvContent = [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const csvContent = [
+      headers.join(','),
+      ...rows.map((row) => row.map((value) => `"${value}"`).join(',')),
+    ].join('\n');
+
+    const blob = new Blob([csvContent], {
+      type: 'text/csv;charset=utf-8;',
+    });
+
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
-    link.setAttribute('href', url);
-    link.setAttribute('download', `KneeLoad_Monitoring_Report_${new Date().toISOString().slice(0, 10)}.csv`);
+
+    link.href = url;
+    link.download = `KneeLoad_Model_Evaluation_${new Date()
+      .toISOString()
+      .slice(0, 10)}.csv`;
+
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+
     URL.revokeObjectURL(url);
   };
 
-  // Print / PDF Handler
   const handlePrint = () => {
     window.print();
   };
 
   return (
-    <div className="space-y-8 print:p-0">
-      {/* Page Header & Top Action Buttons */}
+    <div className="space-y-7 print:p-0">
+
+      {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-[#172B4D]">
             Results &amp; Reports
           </h2>
-          <p className="text-xs sm:text-sm text-[#718096] mt-0.5">
-            Review monitoring sessions and analyze estimated knee-loading trends.
+
+          <p className="text-xs sm:text-sm text-[#718096] mt-1">
+            Evaluation of estimated knee adduction and flexion moments.
           </p>
         </div>
 
-        {/* Action Buttons: Burnt orange primary button */}
         <div className="flex items-center gap-3 print:hidden">
           <button
             onClick={handleExportCSV}
-            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-md bg-white border border-[#E5E7EB] text-[#172B4D] text-xs font-semibold hover:bg-[#F7F8FA] transition-colors shadow-xs"
-            title="Download CSV spreadsheet"
+            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-md bg-white border border-[#E5E7EB] text-[#172B4D] text-xs font-semibold hover:bg-[#F7F8FA] transition-colors"
           >
             <Download className="w-3.5 h-3.5 text-[#E87532]" />
-            <span>Export CSV</span>
+            Export CSV
           </button>
 
           <button
             onClick={handlePrint}
-            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-md bg-[#E87532] text-white text-xs font-semibold hover:bg-[#D46222] transition-colors shadow-xs"
-            title="Print or Save PDF report"
+            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-md bg-[#E87532] text-white text-xs font-semibold hover:bg-[#D46222] transition-colors"
           >
-            <Printer className="w-3.5 h-3.5 text-white" />
-            <span>Print Report</span>
+            <Printer className="w-3.5 h-3.5" />
+            Print Report
           </button>
         </div>
       </div>
 
-      {/* ============================================================
-          SECTION A: Summary Metrics (4 Cards)
-          ============================================================ */}
-      <section aria-labelledby="summary-metrics-heading">
-        <h3 id="summary-metrics-heading" className="sr-only">
-          Reporting Summary Metrics
-        </h3>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
-          {/* 1. Total Monitoring Sessions */}
-          <MetricCard
-            title="Total Sessions"
-            value={totalSessions}
-            unit="records"
-            label="Historical trials on file"
-            icon={FileBarChart}
-            badge="Archived"
-            iconBgColor="bg-[#F0F4F8]"
-            iconTextColor="text-[#172B4D]"
-          />
+      {/* Evaluation Information */}
+      <section className="bg-white border border-[#E5E7EB] rounded-lg p-5 shadow-sm">
+        <div className="flex items-start gap-3">
+          <div className="p-2 rounded-md bg-[#F0F4F8]">
+            <FileBarChart className="w-5 h-5 text-[#172B4D]" />
+          </div>
 
-          {/* 2. Average Estimated Knee Load */}
-          <MetricCard
-            title="Avg Estimated Load"
-            value={avgLoadNum}
-            unit="N"
-            label="Across recorded trials"
-            icon={Activity}
-            badge="Estimated"
-            iconBgColor="bg-[#FFF1E8]"
-            iconTextColor="text-[#E87532]"
-          />
+          <div>
+            <h3 className="text-sm font-bold text-[#172B4D]">
+              Model Evaluation
+            </h3>
 
-          {/* 3. Peak Estimated Knee Load */}
-          <MetricCard
-            title="Peak Estimated Load"
-            value={peakLoadNum}
-            unit="N"
-            label="Maximum recorded point"
-            icon={TrendingUp}
-            badge="Single Stride"
-            iconBgColor="bg-[#F0F4F8]"
-            iconTextColor="text-[#172B4D]"
-          />
-
-          {/* 4. Total Gait Cycles */}
-          <MetricCard
-            title="Total Gait Cycles"
-            value={totalStrides.toLocaleString()}
-            unit="cycles"
-            label="Cumulative strides evaluated"
-            icon={Footprints}
-            badge="Complete"
-            iconBgColor="bg-[#FFF1E8]"
-            iconTextColor="text-[#E87532]"
-          />
+            <p className="text-xs text-[#718096] mt-1 leading-relaxed">
+              Performance is evaluated separately for the Knee Adduction
+              Moment (KAM) and Knee Flexion Moment (KFM).
+              All moment values use %BW·BH.
+            </p>
+          </div>
         </div>
       </section>
 
-      {/* ============================================================
-          SECTION B: Session History Table (Search & Filter)
-          ============================================================ */}
-      <section className="bg-white border border-[#E5E7EB] rounded-lg shadow-sm overflow-hidden" aria-labelledby="session-history-heading">
-        {/* Table Filter Bar */}
-        <div className="p-4 sm:p-5 border-b border-[#E5E7EB] flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div>
-            <h3 id="session-history-heading" className="text-base font-bold text-[#172B4D] tracking-tight">
-              Session History
-            </h3>
-            <p className="text-xs text-[#718096] mt-0.5">
-              Detailed registry of biomechanical recording sessions.
-            </p>
-          </div>
+      {/* Results Source */}
+      <section
+        className={`rounded-lg border p-4 flex items-start gap-3 ${results.length > 0
+          ? 'bg-[#ECFDF5] border-[#A7F3D0]'
+          : 'bg-[#FFF8F1] border-[#F5D5BD]'
+          }`}
+      >
+        <Info
+          className={`w-4 h-4 mt-0.5 shrink-0 ${results.length > 0 ? 'text-[#16A36A]' : 'text-[#E87532]'
+            }`}
+        />
 
-          <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-            {/* Search Input */}
-            <div className="relative">
-              <Search className="w-3.5 h-3.5 text-[#718096] absolute left-3 top-1/2 -translate-y-1/2" />
-              <input
-                type="text"
-                placeholder="Search session ID or date..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-9 pr-3 py-1.5 text-xs rounded-md bg-[#F7F8FA] border border-[#E5E7EB] text-[#202B3C] focus:outline-none focus:border-[#E87532] w-full sm:w-56"
-              />
-            </div>
+        <div>
+          <p className="text-xs font-semibold text-[#172B4D]">
+            {loading
+              ? 'Loading evaluation results...'
+              : results.length > 0
+                ? 'Experimental evaluation results loaded'
+                : 'No experimental evaluation results available'}
+          </p>
 
-            {/* Status Filter Tabs */}
-            <div className="flex items-center rounded-md border border-[#E5E7EB] p-0.5 bg-[#F7F8FA] text-xs">
-              {(['All', 'Active', 'Completed', 'Archived'] as const).map((filter) => (
-                <button
-                  key={filter}
-                  onClick={() => setStatusFilter(filter)}
-                  className={`px-2.5 py-1 rounded text-xs font-medium transition-colors ${statusFilter === filter
-                    ? 'bg-white text-[#172B4D] shadow-xs font-semibold'
-                    : 'text-[#718096] hover:text-[#172B4D]'
-                    }`}
-                >
-                  {filter}
-                </button>
-              ))}
-            </div>
-          </div>
+          <p className="text-xs text-[#718096] mt-1">
+            {results.length > 0
+              ? `Source: ${source ?? 'Not specified in results file'}`
+              : 'Values are shown as dashes until actual model evaluation results are available.'}
+          </p>
+        </div>
+      </section>
+
+      {/* Evaluation Table */}
+      <section
+        className="bg-white border border-[#E5E7EB] rounded-lg shadow-sm overflow-hidden"
+        aria-labelledby="evaluation-table-heading"
+      >
+        <div className="p-5 border-b border-[#E5E7EB]">
+          <h3
+            id="evaluation-table-heading"
+            className="text-sm font-bold text-[#172B4D]"
+          >
+            Model Performance Comparison
+          </h3>
+
+          <p className="text-xs text-[#718096] mt-1">
+            RMSE, relative RMSE and correlation for KAM and KFM.
+          </p>
         </div>
 
-        {/* Table */}
         <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
+          <table className="w-full text-left border-collapse min-w-[1050px]">
             <thead>
               <tr className="bg-[#F7F8FA] border-b border-[#E5E7EB]">
-                <th className="px-6 py-3 text-[11px] font-semibold text-[#718096] uppercase tracking-wider">
-                  Session ID
+                <th
+                  rowSpan={2}
+                  className="px-4 py-4 text-[11px] font-semibold text-[#718096] uppercase tracking-wider"
+                >
+                  Model
                 </th>
-                <th className="px-6 py-3 text-[11px] font-semibold text-[#718096] uppercase tracking-wider">
-                  Date
+
+                <th
+                  rowSpan={2}
+                  className="px-4 py-4 text-[11px] font-semibold text-[#718096] uppercase tracking-wider"
+                >
+                  Sensor Configuration
                 </th>
-                <th className="px-6 py-3 text-[11px] font-semibold text-[#718096] uppercase tracking-wider">
-                  Duration
+
+                <th
+                  colSpan={3}
+                  className="px-4 py-3 text-center text-[11px] font-bold text-[#E87532] uppercase tracking-wider border-l border-[#E5E7EB]"
+                >
+                  KAM (%BW·BH)
                 </th>
-                <th className="px-6 py-3 text-[11px] font-semibold text-[#718096] uppercase tracking-wider">
-                  Avg Estimated Load
-                </th>
-                <th className="px-6 py-3 text-[11px] font-semibold text-[#718096] uppercase tracking-wider">
-                  Peak Estimated Load
-                </th>
-                <th className="px-6 py-3 text-[11px] font-semibold text-[#718096] uppercase tracking-wider">
-                  Gait Cycles
-                </th>
-                <th className="px-6 py-3 text-[11px] font-semibold text-[#718096] uppercase tracking-wider">
-                  Status
-                </th>
-                <th className="px-6 py-3 text-[11px] font-semibold text-[#718096] uppercase tracking-wider text-right print:hidden">
-                  Action
+
+                <th
+                  colSpan={3}
+                  className="px-4 py-3 text-center text-[11px] font-bold text-[#172B4D] uppercase tracking-wider border-l border-[#E5E7EB]"
+                >
+                  KFM (%BW·BH)
                 </th>
               </tr>
+
+              <tr className="bg-[#F7F8FA] border-b border-[#E5E7EB]">
+                {[
+                  'RMSE',
+                  'Relative RMSE',
+                  'Correlation',
+                  'RMSE',
+                  'Relative RMSE',
+                  'Correlation',
+                ].map((heading, index) => (
+                  <th
+                    key={`${heading}-${index}`}
+                    className={`px-4 py-3 text-[10px] font-semibold text-[#718096] whitespace-nowrap ${index === 0 || index === 3
+                      ? 'border-l border-[#E5E7EB]'
+                      : ''
+                      }`}
+                  >
+                    {heading}
+                  </th>
+                ))}
+              </tr>
             </thead>
-            <tbody className="divide-y divide-[#E5E7EB] text-sm">
-              {filteredSessions.length > 0 ? (
-                filteredSessions.map((session) => (
-                  <tr key={session.sessionId} className="hover:bg-[#F7F8FA]/80 transition-colors">
-                    <td className="px-6 py-4 font-mono font-medium text-[#172B4D] text-xs">
-                      {session.sessionId}
-                    </td>
-                    <td className="px-6 py-4 text-xs text-[#202B3C]">
-                      {session.date}
-                    </td>
-                    <td className="px-6 py-4 text-xs text-[#718096]">
-                      {session.duration}
-                    </td>
-                    <td className="px-6 py-4 text-xs font-bold text-[#172B4D] tabular-nums">
-                      {session.averageEstimatedLoad}
-                    </td>
-                    <td className="px-6 py-4 text-xs font-semibold text-[#E87532] tabular-nums">
-                      {session.peakEstimatedLoad || '—'}
-                    </td>
-                    <td className="px-6 py-4 text-xs text-[#202B3C] tabular-nums">
-                      {session.gaitCycles}
-                    </td>
-                    <td className="px-6 py-4 text-xs">
-                      <span
-                        className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border ${session.status === 'Active'
-                          ? 'bg-[#ECFDF5] text-[#16A36A] border-[#A7F3D0]'
-                          : session.status === 'Completed'
-                            ? 'bg-[#F0F4F8] text-[#172B4D] border-[#D9E2EC]'
-                            : 'bg-[#F7F8FA] text-[#718096] border-[#E5E7EB]'
-                          }`}
-                      >
-                        {session.status}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 text-xs text-right print:hidden">
-                      <button
-                        onClick={() => setSelectedSession(session)}
-                        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-medium text-[#E87532] bg-[#FFF1E8] border border-[#FFE4D4] hover:bg-[#FFE4D4] transition-colors"
-                      >
-                        <Eye className="w-3.5 h-3.5" />
-                        <span>View Details</span>
-                      </button>
-                    </td>
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan={8} className="px-6 py-8 text-center text-xs text-[#718096]">
-                    No monitoring sessions found matching &ldquo;{searchTerm}&rdquo;.
+
+            <tbody className="divide-y divide-[#E5E7EB] text-xs">
+              {displayRows.map((item, index) => (
+                <tr
+                  key={`${item.model}-${item.sensorSet}-${index}`}
+                  className="hover:bg-[#F7F8FA]/70 transition-colors"
+                >
+                  <td className="px-4 py-4 font-medium text-[#172B4D]">
+                    {item.model || '–'}
+                  </td>
+
+                  <td className="px-4 py-4 text-[#202B3C]">
+                    {item.sensorSet}
+                  </td>
+
+                  <td className="px-4 py-4 border-l border-[#E5E7EB] font-mono tabular-nums text-[#E87532]">
+                    {formatMetric(item.kam?.rmse)}
+                  </td>
+
+                  <td className="px-4 py-4 font-mono tabular-nums text-[#202B3C]">
+                    {formatMetric(item.kam?.relativeRmse)}
+                  </td>
+
+                  <td className="px-4 py-4 font-mono tabular-nums text-[#202B3C]">
+                    {formatMetric(item.kam?.correlation)}
+                  </td>
+
+                  <td className="px-4 py-4 border-l border-[#E5E7EB] font-mono tabular-nums text-[#172B4D]">
+                    {formatMetric(item.kfm?.rmse)}
+                  </td>
+
+                  <td className="px-4 py-4 font-mono tabular-nums text-[#202B3C]">
+                    {formatMetric(item.kfm?.relativeRmse)}
+                  </td>
+
+                  <td className="px-4 py-4 font-mono tabular-nums text-[#202B3C]">
+                    {formatMetric(item.kfm?.correlation)}
                   </td>
                 </tr>
-              )}
+              ))}
             </tbody>
           </table>
         </div>
-      </section>
 
-      {/* ============================================================
-          SECTION C: Load Analysis Charts (Recharts Navy + Orange)
-          ============================================================ */}
-      <section className="space-y-6" aria-labelledby="load-analysis-heading">
-        <h3 id="load-analysis-heading" className="text-sm font-bold text-[#172B4D] uppercase tracking-wider">
-          Cross-Session Load Analysis
-        </h3>
-
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Chart 1: Average vs Peak Estimated Load Comparison */}
-          <div className="bg-white border border-[#E5E7EB] rounded-lg p-5 shadow-sm">
-            <div className="flex items-center justify-between mb-4">
-              <div>
-                <h4 className="text-sm font-bold text-[#172B4D]">Average vs. Peak Estimated Load</h4>
-                <p className="text-[11px] text-[#718096]">Comparison of mean stance load vs. peak loading per session</p>
-              </div>
-              <span className="text-[10px] font-mono text-[#718096] bg-[#F7F8FA] px-2 py-0.5 rounded border border-[#E5E7EB]">
-                Values in Newtons (N)
-              </span>
-            </div>
-
-            <div className="w-full h-64">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={chartData} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" vertical={false} />
-                  <XAxis dataKey="name" stroke="#718096" fontSize={11} tickLine={false} />
-                  <YAxis stroke="#718096" fontSize={11} tickLine={false} unit=" N" />
-                  <Tooltip
-                    contentStyle={{ backgroundColor: '#FFFFFF', borderColor: '#E5E7EB', borderRadius: '0.375rem', fontSize: '11px' }}
-                  />
-                  <Legend verticalAlign="top" height={30} iconSize={8} wrapperStyle={{ fontSize: '11px' }} />
-                  {/* Avg Load: Primary Orange #E87532 */}
-                  <Bar dataKey="averageLoad" name="Avg Estimated Load (N)" fill="#E87532" radius={[4, 4, 0, 0]} isAnimationActive={false} />
-                  {/* Peak Load: Primary Navy #172B4D */}
-                  <Bar dataKey="peakLoad" name="Peak Estimated Load (N)" fill="#172B4D" radius={[4, 4, 0, 0]} isAnimationActive={false} />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-
-          {/* Chart 2: Stride Volume vs. Load Trajectory */}
-          <div className="bg-white border border-[#E5E7EB] rounded-lg p-5 shadow-sm">
-            <div className="flex items-center justify-between mb-4">
-              <div>
-                <h4 className="text-sm font-bold text-[#172B4D]">Session Average Load Trend</h4>
-                <p className="text-[11px] text-[#718096]">Historical progression of mean estimated joint contact force</p>
-              </div>
-              <span className="text-[10px] font-mono text-[#718096] bg-[#F7F8FA] px-2 py-0.5 rounded border border-[#E5E7EB]">
-                Chronological
-              </span>
-            </div>
-
-            <div className="w-full h-64">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={chartData} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" vertical={false} />
-                  <XAxis dataKey="name" stroke="#718096" fontSize={11} tickLine={false} />
-                  <YAxis stroke="#718096" fontSize={11} tickLine={false} unit=" N" domain={[200, 300]} />
-                  <Tooltip
-                    contentStyle={{ backgroundColor: '#FFFFFF', borderColor: '#E5E7EB', borderRadius: '0.375rem', fontSize: '11px' }}
-                  />
-                  <Legend verticalAlign="top" height={30} iconSize={8} wrapperStyle={{ fontSize: '11px' }} />
-                  {/* Mean Load Line: Primary Orange #E87532 */}
-                  <Line
-                    type="monotone"
-                    dataKey="averageLoad"
-                    name="Mean Session Load (N)"
-                    stroke="#E87532"
-                    strokeWidth={2.5}
-                    dot={{ r: 4, fill: '#E87532', stroke: '#FFFFFF', strokeWidth: 2 }}
-                    isAnimationActive={false}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
+        <div className="px-5 py-3 border-t border-[#E5E7EB] bg-[#F7F8FA]">
+          <p className="text-[11px] text-[#718096]">
+            RMSE: Root Mean Square Error. Relative RMSE: RMSE relative to
+            the reference signal. Correlation: agreement between estimated
+            and reference signals.
+          </p>
         </div>
       </section>
-
-      {/* ============================================================
-          VIEW DETAILS MODAL
-          ============================================================ */}
-      {selectedSession && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#0F1E36]/50 backdrop-blur-xs print:hidden">
-          <div className="bg-white border border-[#E5E7EB] rounded-lg shadow-xl max-w-lg w-full p-6 space-y-5 animate-in fade-in zoom-in-95 duration-150">
-            {/* Modal Header */}
-            <div className="flex items-center justify-between pb-3 border-b border-[#E5E7EB]">
-              <div className="flex items-center gap-2.5">
-                <div className="p-2 rounded bg-[#FFF1E8] text-[#E87532]">
-                  <FileSpreadsheet className="w-4 h-4" />
-                </div>
-                <div>
-                  <h4 className="text-base font-bold text-[#172B4D]">Session Details</h4>
-                  <span className="font-mono text-xs text-[#718096]">{selectedSession.sessionId}</span>
-                </div>
-              </div>
-              <button
-                onClick={() => setSelectedSession(null)}
-                className="p-1 rounded text-[#718096] hover:text-[#172B4D] hover:bg-[#F7F8FA]"
-                aria-label="Close dialog"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            {/* Details Grid */}
-            <div className="grid grid-cols-2 gap-3 text-xs">
-              <div className="p-3 rounded bg-[#F7F8FA] border border-[#E5E7EB]">
-                <span className="text-[10px] text-[#718096] block uppercase font-semibold">Date of Session</span>
-                <span className="text-[#172B4D] font-medium text-sm mt-0.5 block">{selectedSession.date}</span>
-              </div>
-              <div className="p-3 rounded bg-[#F7F8FA] border border-[#E5E7EB]">
-                <span className="text-[10px] text-[#718096] block uppercase font-semibold">Duration</span>
-                <span className="text-[#172B4D] font-medium text-sm mt-0.5 block">{selectedSession.duration}</span>
-              </div>
-              <div className="p-3 rounded bg-[#F7F8FA] border border-[#E5E7EB]">
-                <span className="text-[10px] text-[#718096] block uppercase font-semibold">Average Estimated Load</span>
-                <span className="text-[#E87532] font-bold text-base mt-0.5 block tabular-nums">{selectedSession.averageEstimatedLoad}</span>
-              </div>
-              <div className="p-3 rounded bg-[#F7F8FA] border border-[#E5E7EB]">
-                <span className="text-[10px] text-[#718096] block uppercase font-semibold">Peak Estimated Load</span>
-                <span className="text-[#172B4D] font-bold text-base mt-0.5 block tabular-nums">{selectedSession.peakEstimatedLoad}</span>
-              </div>
-              <div className="p-3 rounded bg-[#F7F8FA] border border-[#E5E7EB]">
-                <span className="text-[10px] text-[#718096] block uppercase font-semibold">Gait Cycles Recorded</span>
-                <span className="text-[#172B4D] font-medium text-sm mt-0.5 block tabular-nums">{selectedSession.gaitCycles} strides</span>
-              </div>
-              <div className="p-3 rounded bg-[#F7F8FA] border border-[#E5E7EB]">
-                <span className="text-[10px] text-[#718096] block uppercase font-semibold">Avg Flexion Angle</span>
-                <span className="text-[#172B4D] font-medium text-sm mt-0.5 block">{selectedSession.avgFlexion || '54.2°'}</span>
-              </div>
-            </div>
-
-            {/* Clinical Trial Notes */}
-            <div className="p-3 rounded bg-[#F7F8FA] border border-[#E5E7EB] text-xs">
-              <span className="text-[10px] text-[#718096] block uppercase font-semibold mb-1">
-                Trial Protocol Notes
-              </span>
-              <p className="text-[#202B3C] leading-relaxed">
-                {selectedSession.notes || 'Simulated gait session conducted under steady ground contact conditions.'}
-              </p>
-            </div>
-
-            {/* Modal Actions */}
-            <div className="flex items-center justify-end gap-2 pt-2 border-t border-[#E5E7EB]">
-              <button
-                onClick={() => setSelectedSession(null)}
-                className="px-4 py-1.5 rounded bg-[#172B4D] text-white text-xs font-semibold hover:bg-[#243B5A] transition-colors"
-              >
-                Close Details
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };
